@@ -2,16 +2,20 @@ import socket
 import ssl
 import re
 
+# initialize socket object with AF_INET as address family and SOCK_STREAM as socket type
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# connect to the given address
 server_address = ('www.its.ac.id', 443)
 client_socket = ssl.wrap_socket(client_socket, keyfile=None, 
                 certfile=None, server_side=False, cert_reqs=ssl.CERT_NONE, 
                 ssl_version=ssl.PROTOCOL_SSLv23)
 client_socket.connect(server_address)
 
+# request to server
 request_header = ('GET / HTTP/1.1\r\nHost: www.its.ac.id\r\nConnection: close\r\nAccept: text/html\r\nAccept-Encoding: gzip, deflate, br\r\n\r\n').encode('utf-8')
 client_socket.sendall(request_header)
 
+# get request from server and loop until get desire request
 response = b''
 while True:
     received = client_socket.recv(1024)
@@ -19,10 +23,8 @@ while True:
         break
     response += received
 
-# print(response[:572].decode('utf-8'))
+# get response header
 response_header = response[:572].decode('utf-8')
-# response_header = response.split('\r\n\r\n')[0]
-# print(response_header)
 
 # no 1
 string = response_header.split('\r\n')[0]
