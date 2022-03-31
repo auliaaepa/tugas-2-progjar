@@ -42,46 +42,41 @@ class ServerResponseThread(threading.Thread):
         if request_file[0] == "/":
             request_file = request_file[1:]
         
-        response_header, response_content = "", ""
-        filepath = "index.html" if request_file == "" or request_file == "index.html" \
-            else os.path.join("dataset", request_file)
-
-        if filepath == "index.html":
+        if request_file == "" or request_file == "index.html":
             # send response in the form of index.html if file exist
-            if os.path.exists(filepath):
-                with open(filepath, "rb") as file:
+            if os.path.exists("index.html"):
+                with open("index.html", "rb") as file:
                     response_content = file.read()
                 response_status = "200 OK"
                 content_mime = "text/html"
                 content_length = len(response_content)
                 response_header = self.get_response_header(response_status, content_mime, content_length)
-            # send response in the form of directory listing if file doesn't exist
+            # send response in the form of directory listing of dataset if file doesn't exist
             else:
-                response_content = self.get_lisdir("").encode()
+                response_content = self.get_lisdir("dataset").encode()
                 response_status = "200 OK"
                 content_mime = "text/html"
                 content_length = len(response_content)
                 response_header = self.get_response_header(response_status, content_mime, content_length)
-        elif os.path.isdir(filepath):
-            # send response in the form of directory listing
+        elif os.path.isdir(request_file):
+            # send response in the form of directory listing of request_file directory
             response_content = self.get_lisdir(request_file).encode()
             response_status = "200 OK"
             content_mime = "text/html"
             content_length = len(response_content)
             response_header = self.get_response_header(response_status, content_mime, content_length)
-        elif os.path.isfile(filepath):
+        elif os.path.isfile(request_file):
             # send response in the form of file attachment
-            with open(filepath, "rb") as file:
+            with open(request_file, "rb") as file:
                 response_content = file.read()
             response_status = "200 OK"
-            content_mime = mimetypes.guess_type(filepath)[0]
+            content_mime = mimetypes.guess_type(request_file)[0]
             content_length = len(response_content)
-            content_name = os.path.basename(filepath)
+            content_name = os.path.basename(request_file)
             response_header = self.get_response_header(response_status, content_mime, content_length, content_name)
         else:
-            # send response in the form of 404.html if uri invalid
-            filepath = "404.html"
-            with open(filepath, "rb") as file:
+            # send response in the form of 404.html if uri invalid 
+            with open("404.html", "rb") as file:
                 response_content = file.read()
             response_status = "404 Not Found"
             content_mime = "text/html"
@@ -94,7 +89,7 @@ class ServerResponseThread(threading.Thread):
 
     def get_response_header(self, status, mime, length, filename=None):
         """generate response header"""
-        response_header = "HTTP/1.0 " + status + "\r\n"
+        response_header = "HTTP/1.1 " + status + "\r\n"
         response_header += "Content-Type: " + mime + "; charset=UTF-8\r\n"
         response_header += "Content-Length: " + str(length) + "\r\n"
         if filename:
@@ -117,27 +112,26 @@ class ServerResponseThread(threading.Thread):
             <h1>{title}</h1>
         """.format(title="Index of /"+root)
         
-        path = "" if root == "" else "/"+root
-        url = "http://" + host + ":" + str(port)
-        for _, dirs, files in os.walk("dataset" + path):
-            if path != "":
+        url = "http://" + host + ":" + str(port) + "/"
+        for _, dirs, files in os.walk(root):
+            if root != "dataset":
                 response_content += """
                     <div><a href="{}">
                         ../
                     </a></div>
-                """.format(url + os.path.dirname(path))
+                """.format(url + os.path.dirname(root))
             for dirname in dirs:
                 response_content += """
                     <div><a href="{}">
                         {}/
                     </a></div>
-                """.format(url + path + "/" + dirname, dirname)
+                """.format(url + root + "/" + dirname, dirname)
             for filename in files:
                 response_content += """
                     <div><a href="{}">
                         {}
                     </a></div>
-                """.format(url + path + "/" + filename, filename)
+                """.format(url + root + "/" + filename, filename)
             break
         
         response_content += """
@@ -166,7 +160,6 @@ server_socket.listen(BACKLOG)
 
 while True:
     try:
-        # print(threading.current_thread().name)
         # accept client
         client_socket, client_address = server_socket.accept()
         ready = select.select([client_socket, ], [], [], 2)
